@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>5 Star Pre-Pump Signal</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+      background: #f2f2f2;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .signal {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 15px;
+      margin: 10px 0;
+    }
+    .signal strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .btn {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    .btn:disabled {
+      background: #ccc;
+    }
+    #pagination {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 5 Star Pre-Pump Signals</h1>
+  <button class="btn" onclick="fetchSignals()">🔄 Refresh</button>
+  <div id="signalContainer">⏳ Loading...</div>
+  <div id="pagination">
+    <button class="btn" onclick="prevPage()" id="prevBtn">⬅️ Previous</button>
+    <button class="btn" onclick="nextPage()" id="nextBtn">Next ➡️</button>
+  </div>
+
+  <script>
+    let signals = [];
+    let currentPage = 1;
+    const perPage = 10;
+    async function fetchSignals() {
+      document.getElementById('signalContainer').innerHTML = '⏳ Loading...';
+      try {
+        const allPrices = await fetch('https://api.binance.com/api/v3/ticker/price').then(res => res.json());
+        const usdtPairs = allPrices
+          .filter(p => p.symbol.endsWith('USDT') && !p.symbol.includes('DOWN') && !p.symbol.includes('UP') && !p.symbol.includes('BUSD'));
+
+        signals = [];
+
+        for (let pair of usdtPairs) {
+          const symbol = pair.symbol;
+          try {
+            const klines15 = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=100`).then(res => res.json());
+            const closePrices = klines15.map(k => parseFloat(k[4]));
+            const volumes = klines15.map(k => parseFloat(k[5]));
+            const recentClose = closePrices[closePrices.length - 1];
+
+            const avgVol = volumes.slice(0, -5).reduce((a,b)=>a+b,0) / (volumes.length - 5);
+            const recentVol = volumes[volumes.length - 1];
+
+            const rsi = calculateRSI(closePrices);
+            const macdBullish = calculateMACD(closePrices);
+            const volumeSpike = recentVol > avgVol * 2.5;
+
+            const low = Math.min(...klines15.map(k => parseFloat(k[3])));
+            const high = Math.max(...klines15.map(k => parseFloat(k[2])));
+
+            const support = low;
+            const resistance = high;
+
+            const entry = recentClose;
+            const target = parseFloat((resistance * 0.985).toFixed(4));
+            const stopLoss = parseFloat((support * 0.98).toFixed(4));
+
+            const targetReached = entry >= target;
+            const slHit = entry <= stopLoss;
+
+            if (!targetReached && !slHit && rsi > 50 && macdBullish && volumeSpike) {
+              const strength = getStrength(rsi, volumeSpike, resistance - support, entry);
+              signals.push({
+                symbol,
+                entry: entry.toFixed(4),
+                target: `${target} (${((target - entry)/entry*100).toFixed(2)}%)`,
+                stopLoss: `${stopLoss} (${((stopLoss - entry)/entry*100).toFixed(2)}%)`,
+                rsi: rsi.toFixed(1),
+                time: new Date().toLocaleTimeString(),
+                strength
+              });
+            }
+          } catch (e) {}
+        }
+
+        currentPage = 1;
+        renderSignals();
+
+      } catch (err) {
+        document.getElementById('signalContainer').innerText = '❌ Error fetching data';
+      }
+    }
+
+    function renderSignals() {
+      const container = document.getElementById('signalContainer');
+      container.innerHTML = '';
+
+      const start = (currentPage - 1) * perPage;
+      const pageSignals = signals.slice(start, start + perPage);
+
+      if (pageSignals.length === 0) {
+        container.innerHTML = '<p>🚫 No valid pre-pump signals now.</p>';
+      }
+
+      for (let s of pageSignals) {
+        const el = document.createElement('div');
+        el.className = 'signal';
+        el.innerHTML = `
+          <strong>💰 ${s.symbol}</strong>
+          📉 Entry: <b>${s.entry}</b><br>
+          🎯 Target: <b>${s.target}</b><br>
+          🛑 Stop Loss: <b>${s.stopLoss}</b><br>
+          🔍 RSI: ${s.rsi}<br>
+          ⚡ Strength: ${s.strength}<br>
+          🕒 Time: ${s.time}
+        `;
+        container.appendChild(el);
+      }
+
+      document.getElementById('prevBtn').disabled = currentPage === 1;
+      document.getElementById('nextBtn').disabled = start + perPage >= signals.length;
+    }
+
+    function nextPage() {
+      if ((currentPage * perPage) < signals.length) {
+        currentPage++;
+        renderSignals();
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderSignals();
+      }
+    }
+
+    function calculateRSI(prices, period = 14) {
+      let gains = 0, losses = 0;
+      for (let i = prices.length - period - 1; i < prices.length - 1; i++) {
+        const diff = prices[i + 1] - prices[i];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+      }
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      if (avgLoss === 0) return 100;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    }
+
+    function calculateMACD(prices) {
+      const ema = (data, period) => {
+        const k = 2 / (period + 1);
+        let emaArr = [data[0]];
+        for (let i = 1; i < data.length; i++) {
+          emaArr.push(data[i] * k + emaArr[i - 1] * (1 - k));
+        }
+        return emaArr;
+      };
+      const ema12 = ema(prices, 12);
+      const ema26 = ema(prices, 26);
+      const macdLine = ema12.map((val, i) => val - ema26[i]);
+      const signalLine = ema(macdLine.slice(26), 9);
+      return macdLine[macdLine.length - 1] > signalLine[signalLine.length - 1];
+    }
+
+    function getStrength(rsi, volumeSpike, range, entry) {
+      if (rsi > 55 && volumeSpike && range > entry * 0.04) return 'Strong';
+      if (rsi > 50 && volumeSpike) return 'Medium';
+      return 'Weak';
+    }
+
+    fetchSignals();
+  </script>
+</body>
+</html>
