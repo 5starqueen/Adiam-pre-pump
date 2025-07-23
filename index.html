@@ -1,77 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pre-Pump Signal Tool</title>
-  <style>
-    body { font-family: sans-serif; padding: 10px; background: #111; color: #fff; }
-    h1 { color: #00ffaa; }
-    .signal { border: 1px solid #444; border-radius: 10px; padding: 10px; margin: 10px 0; background: #1a1a1a; }
-    .strong { color: #00ff99; } .medium { color: #ffaa00; } .weak { color: #ff4444; }
-    button { padding: 10px 15px; background: #00ffaa; border: none; color: black; margin: 5px; border-radius: 5px; cursor: pointer; }
-    #pagination { margin-top: 20px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance Pump Signal Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            color: #f0b90b;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .controls {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        select, button {
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        button {
+            background-color: #f0b90b;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #d8a600;
+        }
+        .signal-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .signal-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .signal-card:hover {
+            transform: translateY(-5px);
+        }
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .symbol {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .strength {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .strength.weak {
+            background-color: #ffcccc;
+            color: #cc0000;
+        }
+        .strength.medium {
+            background-color: #ffe6cc;
+            color: #e67300;
+        }
+        .strength.strong {
+            background-color: #d9f2d9;
+            color: #2d862d;
+        }
+        .price-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .price-box {
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .price-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        .price-value {
+            font-weight: bold;
+        }
+        .targets {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .target {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .target-1 {
+            background-color: #e6f3ff;
+            border: 1px solid #b3d9ff;
+        }
+        .target-2 {
+            background-color: #ccffe6;
+            border: 1px solid #99e6c2;
+        }
+        .stop-loss {
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .time {
+            font-size: 12px;
+            color: #999;
+            text-align: right;
+            margin-top: 10px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .signal-container {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>🚀 Pre-Pump Signal Tool</h1>
-  <button onclick="fetchSignals()">🔄 Refresh Signals</button>
-  <div id="signals">Loading signals...</div>
-  <div id="pagination"></div>
-
-  <script>
-    let allSignals = [];
-    let currentPage = 1;
-    const perPage = 10;
-
-    async function fetchSignals() {
-      document.getElementById('signals').innerHTML = '⏳ Fetching live data...';
-      // Simulated fetch — replace with real Binance + TA logic
-      const coins = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "TRXUSDT"]; // replace with all coins
-      const now = new Date().toLocaleTimeString();
-      allSignals = coins.map(coin => {
-        const price = (Math.random() * 100).toFixed(2);
-        const target = (price * 1.10).toFixed(2); // simulate +10%
-        const sl = (price * 0.97).toFixed(2); // simulate -3%
-        const strength = Math.random() > 0.7 ? 'Strong' : Math.random() > 0.4 ? 'Medium' : 'Weak';
-        return {
-          coin,
-          entry: price,
-          target,
-          stop: sl,
-          time: now,
-          strength,
-          valid: '✅'
-        };
-      });
-      renderPage(1);
-    }
-
-    function renderPage(page) {
-      currentPage = page;
-      const start = (page - 1) * perPage;
-      const end = start + perPage;
-      const signalsToShow = allSignals.slice(start, end);
-
-      const html = signalsToShow.map(s => `
-        <div class="signal">
-          <strong>${s.coin}</strong> | Strength: <span class="${s.strength.toLowerCase()}">${s.strength}</span><br/>
-          Entry: <b>${s.entry}</b> | Target: <b>${s.target}</b> | SL: <b>${s.stop}</b><br/>
-          Time: ${s.time} | Valid: ${s.valid}
+    <h1>Binance Pump Signal Generator</h1>
+    
+    <div class="controls">
+        <div>
+            <label for="timeframe">Time Frame:</label>
+            <select id="timeframe">
+                <option value="1h">1 Hour</option>
+                <option value="4h">4 Hours</option>
+                <option value="1d">1 Day</option>
+            </select>
         </div>
-      `).join('');
+        
+        <div>
+            <label for="volumeFilter">Min Volume (BTC):</label>
+            <select id="volumeFilter">
+                <option value="10">10 BTC</option>
+                <option value="50" selected>50 BTC</option>
+                <option value="100">100 BTC</option>
+                <option value="200">200 BTC</option>
+            </select>
+        </div>
+        
+        <div>
+            <label for="strengthFilter">Signal Strength:</label>
+            <select id="strengthFilter">
+                <option value="all">All Signals</option>
+                <option value="strong">Strong Only</option>
+                <option value="medium">Medium+</option>
+            </select>
+        </div>
+        
+        <button id="refreshBtn">Refresh Signals</button>
+        <button id="monitorBtn">Start Monitoring (5min)</button>
+    </div>
+    
+    <div id="errorContainer" class="error" style="display: none;"></div>
+    
+    <div id="signalContainer" class="signal-container"></div>
+    
+    <div id="loadingIndicator" class="loading" style="display: none;">
+        Loading signals... Please wait.
+    </div>
 
-      document.getElementById('signals').innerHTML = html || "❌ No signals found.";
+    <script>
+        // Configuration
+        const config = {
+            binanceAPI: 'https://api.binance.com/api/v3',
+            strengthThresholds: {
+                weak: 0.05,
+                medium: 0.1,
+                strong: 0.2
+            },
+            defaultLookback: 24 // hours
+        };
 
-      const totalPages = Math.ceil(allSignals.length / perPage);
-      let pagBtns = '';
-      for (let i = 1; i <= totalPages; i++) {
-        pagBtns += `<button onclick="renderPage(${i})"${i === page ? ' style="background:#fff;color:#000;"' : ''}>${i}</button>`;
-      }
-      document.getElementById('pagination').innerHTML = pagBtns;
-    }
+        // DOM Elements
+        const signalContainer = document.getElementById('signalContainer');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorContainer = document.getElementById('errorContainer');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const monitorBtn = document.getElementById('monitorBtn');
+        const timeframeSelect = document.getElementById('timeframe');
+        const volumeFilter = document.getElementById('volumeFilter');
+        const strengthFilter = document.getElementById('strengthFilter');
 
-    fetchSignals();
-  </script>
+        // State
+        let monitoringInterval = null;
+        let activeSignals = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshBtn.addEventListener('click', fetchAndDisplaySignals);
+            monitorBtn.addEventListener('click', toggleMonitoring);
+            fetchAndDisplaySignals();
+        });
+
+        // Main function to fetch and display signals
+        async function fetchAndDisplaySignals() {
+            try {
+                showLoading();
+                clearError();
+                
+                const timeframe = timeframeSelect.value;
+                const minVolume = parseFloat(volumeFilter.value);
+                
+                // Fetch all trading pairs
+                const allSymbols = await fetchTradingPairs();
+                
+                // Fetch 24hr ticker data
+                const tickerData = await fetch24hrTickerData();
+                
+                // Analyze each coin
+                const allSignals = [];
+                const batchSize = 50; // Process in batches to avoid rate limiting
+                
+                for (let i = 0; i < Math.min(allSymbols.length, 200); i += batchSize) {
+                    const batch = allSymbols.slice(i, i + batchSize);
+                    const batchPromises = batch.map(symbol => analyzeCoin(symbol, tickerData, timeframe, minVolume));
+                    const batchResults = await Promise.all(batchPromises);
+                    allSignals.push(...batchResults.filter(signal => signal !== null));
+                    await delay(1000); // Add delay between batches to avoid rate limiting
+                }
+                
+                // Sort by strongest signals
+                allSignals.sort((a, b) => Math.abs(b.momentum) - Math.abs(a.momentum));
+                
+                // Filter by strength
+                const filteredSignals = filterSignals(allSignals);
+                
+                // Update active signals (for monitoring)
+                activeSignals = filteredSignals.filter(s => s.strength === 'strong' || s.strength === 'medium');
+                
+                // Display signals
+                displaySignals(filteredSignals);
+                
+            } catch (error) {
+                showError(`Error fetching data: ${error.message}`);
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Filter signals based on strength selection
+        function filterSignals(signals) {
+            const strengthFilterValue = strengthFilter.value;
+            
+            if (strengthFilterValue === 'all') return signals;
+            if (strengthFilterValue === 'medium') {
+                return signals.filter(s => s.strength === 'medium' || s.strength === 'strong');
+            }
+            return signals.filter(s => s.strength === strengthFilterValue);
+        }
+
+        // Fetch all trading pairs from Binance
+        async function fetchTradingPairs() {
+            const response = await fetch(`${config.binanceAPI}/exchangeInfo`);
+            const data = await response.json();
+            return data.symbols
+                .filter(symbol => symbol.status === 'TRADING')
+                .map(symbol => symbol.symbol);
+        }
+
+        // Fetch 24hr ticker data
+        async function fetch24hrTickerData() {
+            const response = await fetch(`${config.binanceAPI}/ticker/24hr`);
+            return await response.json();
+        }
+
+        // Fetch klines (historical data) for a symbol
+        async function fetchKlines(symbol, interval, limit) {
+            const params = new URLSearchParams({
+                symbol: symbol,
+                interval: interval,
+                limit: limit
+            });
+            
+            const response = await fetch(`${config.binanceAPI}/klines?${params}`);
+            return await response.json();
+        }
+
+        // Analyze a single coin for pump signals
+        async function analyzeCoin(symbol, tickerData, timeframe, minVolume) {
+            try {
+                // Find the coin in ticker data
+                const coinData = tickerData.find(item => item.symbol === symbol);
+                if (!coinData) return null;
+                
+                // Get price change and volume
+                const priceChange = parseFloat(coinData.priceChangePercent);
+                const volume = parseFloat(coinData.volume);
+                
+                // Skip if volume is too low
+                if (volume < minVolume) return null;
+                
+                // Get historical data
+                const klines = await fetchKlines(symbol, timeframe, config.defaultLookback);
+                if (!klines || klines.length < 2) return null;
+                
+                // Calculate recent momentum
+                const closes = klines.map(k => parseFloat(k[4]));
+                const latestClose = closes[closes.length - 1];
+                const prevClose = closes[closes.length - 2];
+                
+                const momentum = (latestClose - prevClose) / prevClose;
+                
+                // Skip if momentum is negative (we only want pumps)
+                if (momentum <= 0) return null;
+                
+                // Determine signal strength
+                let strength = 'weak';
+                if (momentum >= config.strengthThresholds.strong) {
+                    strength = 'strong';
+                } else if (momentum >= config.strengthThresholds.medium) {
+                    strength = 'medium';
+                }
+                
+                // Calculate targets and stop loss
+                const entryPrice = latestClose;
+                const target1 = entryPrice * (1 + momentum * 0.5);
+                const target2 = entryPrice * (1 + momentum);
+                const stopLoss = entryPrice * (1 - momentum * 0.3);
+                
+                return {
+                    symbol: symbol,
+                    entryPrice: entryPrice,
+                    target1: target1,
+                    target1Percent: ((target1 - entryPrice) / entryPrice * 100).toFixed(2),
+                    target2: target2,
+                    target2Percent: ((target2 - entryPrice) / entryPrice * 100).toFixed(2),
+                    stopLoss: stopLoss,
+                    stopLossPercent: ((stopLoss - entryPrice) / entryPrice * 100).toFixed(2),
+                    strength: strength,
+                    momentum: (momentum * 100).toFixed(2),
+                    volume: volume,
+                    time: new Date().toLocaleString()
+                };
+                
+            } catch (error) {
+                console.error(`Error analyzing ${symbol}:`, error);
+                return null;
+            }
+        }
+
+        // Display signals in the UI
+        function displaySignals(signals) {
+            if (signals.length === 0) {
+                signalContainer.innerHTML = '<div class="no-signals">No strong signals found at this time. Try adjusting your filters.</div>';
+                return;
+            }
+            
+            signalContainer.innerHTML = signals.map(signal => `
+                <div class="signal-card">
+                    <div class="signal-header">
+                        <span class="symbol">${signal.symbol}</span>
+                        <span class="strength ${signal.strength}">${signal.strength}</span>
+                    </div>
+                    
+                    <div class="price-info">
+                        <div class="price-box">
+                            <div class="price-label">Entry Price</div>
+                            <div class="price-value">${signal.entryPrice.toFixed(8)}</div>
+                        </div>
+                        <div class="price-box">
+                            <div class="price-label">Momentum</div>
+                            <div class="price-value">${signal.momentum}%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="targets">
+                        <div class="target target-1">
+                            <div class="price-label">Target 1</div>
+                            <div class="price-value">${signal.target1.toFixed(8)}</div>
+                            <div class="price-percent">+${signal.target1Percent}%</div>
+                        </div>
+                        <div class="target target-2">
+                            <div class="price-label">Target 2</div>
+                            <div class="price-value">${signal.target2.toFixed(8)}</div>
+                            <div class="price-percent">+${signal.target2Percent}%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stop-loss">
+                        <div class="price-label">Stop Loss</div>
+                        <div class="price-value">${signal.stopLoss.toFixed(8)}</div>
+                        <div class="price-percent">${signal.stopLossPercent}%</div>
+                    </div>
+                    
+                    <div class="time">Signal generated: ${signal.time}</div>
+                </div>
+            `).join('');
+        }
+
+        // Toggle monitoring mode
+        function toggleMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                monitorBtn.textContent = 'Start Monitoring (5min)';
+                refreshBtn.disabled = false;
+            } else {
+                fetchAndDisplaySignals();
+                monitoringInterval = setInterval(fetchAndDisplaySignals, 5 * 60 * 1000); // 5 minutes
+                monitorBtn.textContent = 'Stop Monitoring';
+                refreshBtn.disabled = true;
+            }
+        }
+
+        // Helper functions
+        function showLoading() {
+            loadingIndicator.style.display = 'block';
+            signalContainer.innerHTML = '';
+        }
+
+        function hideLoading() {
+            loadingIndicator.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorContainer.textContent = message;
+            errorContainer.style.display = 'block';
+        }
+
+        function clearError() {
+            errorContainer.style.display = 'none';
+            errorContainer.textContent = '';
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
 </body>
 </html>
