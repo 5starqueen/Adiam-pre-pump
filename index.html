@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Pump Signal Generator</title>
+    <title>Binance Early Pump Signal Detector</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -29,7 +29,7 @@
             gap: 15px;
             align-items: center;
         }
-        select, button {
+        select, button, input {
             padding: 10px 15px;
             border-radius: 4px;
             border: 1px solid #ddd;
@@ -46,10 +46,15 @@
         button:hover {
             background-color: #d8a600;
         }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         .signal-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 20px;
+            margin-bottom: 20px;
         }
         .signal-card {
             background-color: white;
@@ -73,24 +78,28 @@
             font-weight: bold;
             font-size: 18px;
         }
-        .strength {
+        .pump-potential {
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
         }
-        .strength.weak {
-            background-color: #ffcccc;
-            color: #cc0000;
+        .potential-5 {
+            background-color: #ffebee;
+            color: #d32f2f;
         }
-        .strength.medium {
-            background-color: #ffe6cc;
-            color: #e67300;
+        .potential-10 {
+            background-color: #fff8e1;
+            color: #ff8f00;
         }
-        .strength.strong {
-            background-color: #d9f2d9;
-            color: #2d862d;
+        .potential-20 {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .potential-30 {
+            background-color: #e3f2fd;
+            color: #1565c0;
         }
         .price-info {
             display: grid;
@@ -157,6 +166,42 @@
             margin: 20px 0;
             text-align: center;
         }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .pagination button {
+            min-width: 40px;
+        }
+        .stats {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat-box {
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f0b90b;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
         @media (max-width: 768px) {
             .signal-container {
                 grid-template-columns: 1fr;
@@ -165,43 +210,68 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Binance Pump Signal Generator</h1>
+    <h1>Binance Early Pump Signal Detector (USDT Pairs)</h1>
+    
+    <div class="stats">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value" id="totalCoins">0</div>
+                <div class="stat-label">Total USDT Pairs</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="potentialPumps">0</div>
+                <div class="stat-label">Potential Pumps</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="strongSignals">0</div>
+                <div class="stat-label">Strong Signals (20%+)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="lastUpdated">-</div>
+                <div class="stat-label">Last Updated</div>
+            </div>
+        </div>
+    </div>
     
     <div class="controls">
         <div>
             <label for="timeframe">Time Frame:</label>
             <select id="timeframe">
-                <option value="1h">1 Hour</option>
+                <option value="15m">15 Minutes</option>
+                <option value="1h" selected>1 Hour</option>
                 <option value="4h">4 Hours</option>
-                <option value="1d">1 Day</option>
             </select>
         </div>
         
         <div>
-            <label for="volumeFilter">Min Volume (BTC):</label>
+            <label for="volumeFilter">Min Volume (USDT):</label>
             <select id="volumeFilter">
-                <option value="10">10 BTC</option>
-                <option value="50" selected>50 BTC</option>
-                <option value="100">100 BTC</option>
-                <option value="200">200 BTC</option>
+                <option value="50000">50,000 USDT</option>
+                <option value="100000" selected>100,000 USDT</option>
+                <option value="200000">200,000 USDT</option>
+                <option value="500000">500,000 USDT</option>
             </select>
         </div>
         
         <div>
-            <label for="strengthFilter">Signal Strength:</label>
-            <select id="strengthFilter">
-                <option value="all">All Signals</option>
-                <option value="strong">Strong Only</option>
-                <option value="medium">Medium+</option>
+            <label for="minPump">Min Pump Potential:</label>
+            <select id="minPump">
+                <option value="5">5%+</option>
+                <option value="10" selected>10%+</option>
+                <option value="20">20%+</option>
+                <option value="30">30%+</option>
             </select>
         </div>
         
         <button id="refreshBtn">Refresh Signals</button>
-        <button id="monitorBtn">Start Monitoring (5min)</button>
+        <button id="monitorBtn">Start Monitoring (3min)</button>
     </div>
     
     <div id="errorContainer" class="error" style="display: none;"></div>
@@ -209,19 +279,28 @@
     <div id="signalContainer" class="signal-container"></div>
     
     <div id="loadingIndicator" class="loading" style="display: none;">
-        Loading signals... Please wait.
+        <div>Loading signals... Analyzing market data</div>
+        <div id="progressText" style="margin-top: 10px; font-size: 14px;">0/0 pairs analyzed</div>
+    </div>
+
+    <div class="pagination">
+        <button id="prevPage" disabled>Previous</button>
+        <span id="pageInfo">Page 1 of 1</span>
+        <button id="nextPage" disabled>Next</button>
     </div>
 
     <script>
         // Configuration
         const config = {
             binanceAPI: 'https://api.binance.com/api/v3',
-            strengthThresholds: {
-                weak: 0.05,
-                medium: 0.1,
-                strong: 0.2
+            pumpThresholds: {
+                potential5: 0.05,
+                potential10: 0.10,
+                potential20: 0.20,
+                potential30: 0.30
             },
-            defaultLookback: 24 // hours
+            defaultLookback: 24, // hours
+            itemsPerPage: 10
         };
 
         // DOM Elements
@@ -232,17 +311,32 @@
         const monitorBtn = document.getElementById('monitorBtn');
         const timeframeSelect = document.getElementById('timeframe');
         const volumeFilter = document.getElementById('volumeFilter');
-        const strengthFilter = document.getElementById('strengthFilter');
+        const minPumpSelect = document.getElementById('minPump');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+        const progressText = document.getElementById('progressText');
+        const totalCoinsEl = document.getElementById('totalCoins');
+        const potentialPumpsEl = document.getElementById('potentialPumps');
+        const strongSignalsEl = document.getElementById('strongSignals');
+        const lastUpdatedEl = document.getElementById('lastUpdated');
 
         // State
         let monitoringInterval = null;
-        let activeSignals = [];
+        let allSignals = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let usdtPairs = [];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             refreshBtn.addEventListener('click', fetchAndDisplaySignals);
             monitorBtn.addEventListener('click', toggleMonitoring);
-            fetchAndDisplaySignals();
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+            
+            // Load USDT pairs first
+            loadUSDTpairs().then(fetchAndDisplaySignals);
         });
 
         // Main function to fetch and display signals
@@ -253,36 +347,46 @@
                 
                 const timeframe = timeframeSelect.value;
                 const minVolume = parseFloat(volumeFilter.value);
-                
-                // Fetch all trading pairs
-                const allSymbols = await fetchTradingPairs();
-                
-                // Fetch 24hr ticker data
-                const tickerData = await fetch24hrTickerData();
+                const minPump = parseFloat(minPumpSelect.value) / 100;
                 
                 // Analyze each coin
-                const allSignals = [];
-                const batchSize = 50; // Process in batches to avoid rate limiting
+                allSignals = [];
+                let analyzedCount = 0;
+                const batchSize = 20; // Process in batches to avoid rate limiting
                 
-                for (let i = 0; i < Math.min(allSymbols.length, 200); i += batchSize) {
-                    const batch = allSymbols.slice(i, i + batchSize);
-                    const batchPromises = batch.map(symbol => analyzeCoin(symbol, tickerData, timeframe, minVolume));
+                // Get ticker data first
+                const tickerData = await fetch24hrTickerData();
+                
+                for (let i = 0; i < usdtPairs.length; i += batchSize) {
+                    const batch = usdtPairs.slice(i, i + batchSize);
+                    const batchPromises = batch.map(symbol => {
+                        return analyzeCoin(symbol, tickerData, timeframe, minVolume, minPump)
+                            .finally(() => {
+                                analyzedCount++;
+                                updateProgress(analyzedCount, usdtPairs.length);
+                            });
+                    });
+                    
                     const batchResults = await Promise.all(batchPromises);
                     allSignals.push(...batchResults.filter(signal => signal !== null));
-                    await delay(1000); // Add delay between batches to avoid rate limiting
+                    
+                    // Add delay between batches to avoid rate limiting
+                    if (i + batchSize < usdtPairs.length) {
+                        await delay(1000);
+                    }
                 }
                 
-                // Sort by strongest signals
-                allSignals.sort((a, b) => Math.abs(b.momentum) - Math.abs(a.momentum));
+                // Sort by highest pump potential
+                allSignals.sort((a, b) => b.pumpPotential - a.pumpPotential);
                 
-                // Filter by strength
-                const filteredSignals = filterSignals(allSignals);
+                // Update stats
+                updateStats(allSignals);
                 
-                // Update active signals (for monitoring)
-                activeSignals = filteredSignals.filter(s => s.strength === 'strong' || s.strength === 'medium');
+                // Update pagination
+                updatePagination();
                 
-                // Display signals
-                displaySignals(filteredSignals);
+                // Display current page
+                displayCurrentPage();
                 
             } catch (error) {
                 showError(`Error fetching data: ${error.message}`);
@@ -292,46 +396,24 @@
             }
         }
 
-        // Filter signals based on strength selection
-        function filterSignals(signals) {
-            const strengthFilterValue = strengthFilter.value;
-            
-            if (strengthFilterValue === 'all') return signals;
-            if (strengthFilterValue === 'medium') {
-                return signals.filter(s => s.strength === 'medium' || s.strength === 'strong');
+        // Load all USDT trading pairs
+        async function loadUSDTpairs() {
+            try {
+                showLoading();
+                const response = await fetch(`${config.binanceAPI}/exchangeInfo`);
+                const data = await response.json();
+                usdtPairs = data.symbols
+                    .filter(symbol => symbol.status === 'TRADING' && symbol.symbol.endsWith('USDT'))
+                    .map(symbol => symbol.symbol);
+                totalCoinsEl.textContent = usdtPairs.length;
+            } catch (error) {
+                showError(`Error loading trading pairs: ${error.message}`);
+                throw error;
             }
-            return signals.filter(s => s.strength === strengthFilterValue);
         }
 
-        // Fetch all trading pairs from Binance
-        async function fetchTradingPairs() {
-            const response = await fetch(`${config.binanceAPI}/exchangeInfo`);
-            const data = await response.json();
-            return data.symbols
-                .filter(symbol => symbol.status === 'TRADING')
-                .map(symbol => symbol.symbol);
-        }
-
-        // Fetch 24hr ticker data
-        async function fetch24hrTickerData() {
-            const response = await fetch(`${config.binanceAPI}/ticker/24hr`);
-            return await response.json();
-        }
-
-        // Fetch klines (historical data) for a symbol
-        async function fetchKlines(symbol, interval, limit) {
-            const params = new URLSearchParams({
-                symbol: symbol,
-                interval: interval,
-                limit: limit
-            });
-            
-            const response = await fetch(`${config.binanceAPI}/klines?${params}`);
-            return await response.json();
-        }
-
-        // Analyze a single coin for pump signals
-        async function analyzeCoin(symbol, tickerData, timeframe, minVolume) {
+        // Analyze a single coin for pump potential
+        async function analyzeCoin(symbol, tickerData, timeframe, minVolume, minPump) {
             try {
                 // Find the coin in ticker data
                 const coinData = tickerData.find(item => item.symbol === symbol);
@@ -339,7 +421,7 @@
                 
                 // Get price change and volume
                 const priceChange = parseFloat(coinData.priceChangePercent);
-                const volume = parseFloat(coinData.volume);
+                const volume = parseFloat(coinData.quoteVolume); // USDT volume
                 
                 // Skip if volume is too low
                 if (volume < minVolume) return null;
@@ -348,7 +430,7 @@
                 const klines = await fetchKlines(symbol, timeframe, config.defaultLookback);
                 if (!klines || klines.length < 2) return null;
                 
-                // Calculate recent momentum
+                // Calculate recent momentum and volatility
                 const closes = klines.map(k => parseFloat(k[4]));
                 const latestClose = closes[closes.length - 1];
                 const prevClose = closes[closes.length - 2];
@@ -358,19 +440,43 @@
                 // Skip if momentum is negative (we only want pumps)
                 if (momentum <= 0) return null;
                 
-                // Determine signal strength
-                let strength = 'weak';
-                if (momentum >= config.strengthThresholds.strong) {
-                    strength = 'strong';
-                } else if (momentum >= config.strengthThresholds.medium) {
-                    strength = 'medium';
+                // Calculate volatility (standard deviation of recent price changes)
+                let sum = 0;
+                let sumSq = 0;
+                let count = 0;
+                
+                for (let i = 1; i < closes.length; i++) {
+                    const change = (closes[i] - closes[i-1]) / closes[i-1];
+                    sum += change;
+                    sumSq += change * change;
+                    count++;
+                }
+                
+                const mean = sum / count;
+                const variance = (sumSq / count) - (mean * mean);
+                const volatility = Math.sqrt(variance);
+                
+                // Estimate pump potential (momentum + volatility adjusted)
+                const pumpPotential = momentum * (1 + volatility);
+                
+                // Skip if pump potential is below threshold
+                if (pumpPotential < minPump) return null;
+                
+                // Determine pump potential category
+                let potentialClass = 'potential-5';
+                if (pumpPotential >= config.pumpThresholds.potential30) {
+                    potentialClass = 'potential-30';
+                } else if (pumpPotential >= config.pumpThresholds.potential20) {
+                    potentialClass = 'potential-20';
+                } else if (pumpPotential >= config.pumpThresholds.potential10) {
+                    potentialClass = 'potential-10';
                 }
                 
                 // Calculate targets and stop loss
                 const entryPrice = latestClose;
-                const target1 = entryPrice * (1 + momentum * 0.5);
-                const target2 = entryPrice * (1 + momentum);
-                const stopLoss = entryPrice * (1 - momentum * 0.3);
+                const target1 = entryPrice * (1 + pumpPotential * 0.5);
+                const target2 = entryPrice * (1 + pumpPotential);
+                const stopLoss = entryPrice * (1 - pumpPotential * 0.3);
                 
                 return {
                     symbol: symbol,
@@ -381,8 +487,9 @@
                     target2Percent: ((target2 - entryPrice) / entryPrice * 100).toFixed(2),
                     stopLoss: stopLoss,
                     stopLossPercent: ((stopLoss - entryPrice) / entryPrice * 100).toFixed(2),
-                    strength: strength,
-                    momentum: (momentum * 100).toFixed(2),
+                    potentialClass: potentialClass,
+                    pumpPotential: pumpPotential,
+                    pumpPotentialPercent: (pumpPotential * 100).toFixed(2),
                     volume: volume,
                     time: new Date().toLocaleString()
                 };
@@ -393,18 +500,24 @@
             }
         }
 
-        // Display signals in the UI
-        function displaySignals(signals) {
-            if (signals.length === 0) {
-                signalContainer.innerHTML = '<div class="no-signals">No strong signals found at this time. Try adjusting your filters.</div>';
+        // Display current page of signals
+        function displayCurrentPage() {
+            const startIdx = (currentPage - 1) * config.itemsPerPage;
+            const endIdx = startIdx + config.itemsPerPage;
+            const pageSignals = allSignals.slice(startIdx, endIdx);
+            
+            if (pageSignals.length === 0) {
+                signalContainer.innerHTML = '<div class="no-signals">No potential pumps found matching your criteria. Try adjusting your filters.</div>';
                 return;
             }
             
-            signalContainer.innerHTML = signals.map(signal => `
+            signalContainer.innerHTML = pageSignals.map(signal => `
                 <div class="signal-card">
                     <div class="signal-header">
                         <span class="symbol">${signal.symbol}</span>
-                        <span class="strength ${signal.strength}">${signal.strength}</span>
+                        <span class="pump-potential ${signal.potentialClass}">
+                            ${signal.pumpPotentialPercent}% Potential
+                        </span>
                     </div>
                     
                     <div class="price-info">
@@ -413,8 +526,8 @@
                             <div class="price-value">${signal.entryPrice.toFixed(8)}</div>
                         </div>
                         <div class="price-box">
-                            <div class="price-label">Momentum</div>
-                            <div class="price-value">${signal.momentum}%</div>
+                            <div class="price-label">Volume (24h)</div>
+                            <div class="price-value">${(signal.volume / 1000).toFixed(1)}K USDT</div>
                         </div>
                     </div>
                     
@@ -442,22 +555,82 @@
             `).join('');
         }
 
+        // Update pagination controls
+        function updatePagination() {
+            totalPages = Math.ceil(allSignals.length / config.itemsPerPage) || 1;
+            
+            if (currentPage > totalPages) {
+                currentPage = totalPages;
+            }
+            
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            prevPageBtn.disabled = currentPage <= 1;
+            nextPageBtn.disabled = currentPage >= totalPages;
+        }
+
+        // Go to previous page
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayCurrentPage();
+                updatePagination();
+            }
+        }
+
+        // Go to next page
+        function goToNextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayCurrentPage();
+                updatePagination();
+            }
+        }
+
+        // Update statistics
+        function updateStats(signals) {
+            potentialPumpsEl.textContent = signals.length;
+            
+            const strongSignals = signals.filter(s => 
+                s.pumpPotential >= config.pumpThresholds.potential20
+            ).length;
+            
+            strongSignalsEl.textContent = strongSignals;
+            lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+        }
+
         // Toggle monitoring mode
         function toggleMonitoring() {
             if (monitoringInterval) {
                 clearInterval(monitoringInterval);
                 monitoringInterval = null;
-                monitorBtn.textContent = 'Start Monitoring (5min)';
+                monitorBtn.textContent = 'Start Monitoring (3min)';
                 refreshBtn.disabled = false;
             } else {
                 fetchAndDisplaySignals();
-                monitoringInterval = setInterval(fetchAndDisplaySignals, 5 * 60 * 1000); // 5 minutes
+                monitoringInterval = setInterval(fetchAndDisplaySignals, 3 * 60 * 1000); // 3 minutes
                 monitorBtn.textContent = 'Stop Monitoring';
                 refreshBtn.disabled = true;
             }
         }
 
-        // Helper functions
+        // Binance API functions
+        async function fetch24hrTickerData() {
+            const response = await fetch(`${config.binanceAPI}/ticker/24hr`);
+            return await response.json();
+        }
+
+        async function fetchKlines(symbol, interval, limit) {
+            const params = new URLSearchParams({
+                symbol: symbol,
+                interval: interval,
+                limit: limit
+            });
+            
+            const response = await fetch(`${config.binanceAPI}/klines?${params}`);
+            return await response.json();
+        }
+
+        // UI Helper functions
         function showLoading() {
             loadingIndicator.style.display = 'block';
             signalContainer.innerHTML = '';
@@ -475,6 +648,10 @@
         function clearError() {
             errorContainer.style.display = 'none';
             errorContainer.textContent = '';
+        }
+
+        function updateProgress(current, total) {
+            progressText.textContent = `${current}/${total} pairs analyzed`;
         }
 
         function delay(ms) {
